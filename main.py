@@ -1,6 +1,6 @@
 '''testing neural networks.
 '''
-from __future__ import annotations
+#from __future__ import annotations
 from typing     import *
 
 import os, sys
@@ -26,6 +26,18 @@ class Executer:
                  , mode: str):
         self.target_model = target_model
         self.mode = mode
+
+
+    def _gen_dataset(self) -> Dict[str, Any]:
+        pass
+
+
+    def _set_experiment(self) -> None:
+        # 1. get dataset
+        # 2. gen model.
+        # 3. train model
+        
+        return 
 
 
 
