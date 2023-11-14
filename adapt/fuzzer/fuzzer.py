@@ -1,3 +1,5 @@
+from typing import *
+
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
@@ -10,6 +12,13 @@ from adapt.utils.functional import coverage
 from adapt.utils.timer import Timeout
 from adapt.utils.timer import Timer
 
+import copy
+
+
+# config
+T = TypeVar('T')
+
+
 class WhiteBoxFuzzer:
   '''A white-box fuzzer for deep neural network.
   
@@ -18,7 +27,20 @@ class WhiteBoxFuzzer:
   This fuzzer will test one input.
   '''
 
-  def __init__(self, network, input, metric=None, strategy=None, k=10, delta=0.5, class_weight=0.5, neuron_weight=0.5, lr=0.1, trail=3, decode=None):
+  def __init__(self
+               , network
+               , input
+               , metric=None
+               , strategy=None
+               , k=10
+               , delta=0.5
+               , class_weight=0.5
+               , neuron_weight=0.5
+               , lr=0.1
+               , trail=3
+               , decode=None
+               , mode: str ='adapt'
+               ):
     '''Create a fuzzer.
     
     Create a white-box fuzzer. All parameters except for the time budget, should
@@ -94,6 +116,63 @@ class WhiteBoxFuzzer:
     self.covered = None
     self.coverage = None
 
+    # added as of 2023
+    self.mode = self.mode
+
+
+
+  def _gen_mutant_by_addition(self, input: T) -> T:
+    with tf.GradientTape() as t:
+      t.watch(input)
+      internals, logits = self.network.predict(input)
+      loss = self.neuron_weight * K.sum([internals[li][ni] for li, ni in neurons]) - self.class_weight * logits[orig_index]
+    dl_di = t.gradient(loss, input)
+
+    # Generate the next input using gradients.
+    input += self.lr * dl_di
+    return input
+
+
+  def _gen_mask(self, prediction: T) -> T: 
+    mask = copy.deepcopy(prediction) 
+    mx = max(prediction)
+
+    for idx, elem in enumerate(prediction):
+        if elem == mx:
+            mask[idx] = 1 
+        else:
+            mask[idx] = 0
+    return mask
+
+
+  def _gen_mutant_by_fgsm(self, input: T) -> T:
+    # TODO: add input label.
+    loss_object = tf.keras.losses.CategoricalCrossentropy()
+    with tf.GradientTape() as tape:
+      tape.watch(input)
+      prediction = self.network.predict(input)
+
+      # TODO: check whether input_label is valid or not.
+      input_label = self._gen_mask(prediction)
+      loss = loss_object(input_label, prediction)
+
+    # Get the gradients of the loss w.r.t to the input image.
+    gradient = tape.gradient(loss, input)
+    # Get the sign of the gradients to create the perturbation
+    signed_grad = tf.sign(gradient)
+    mutant = input + (self.lr * signed_grad)
+    return mutant 
+
+
+  def _gen_mutant(self, input: T) -> T:
+    if self.mode == 'adapt':
+      return self._gen_mutant_by_addition(input)
+    elif self.mode == 'fgsm':
+      return self._gen_mutant_by_fgsm(input) 
+    else:
+      raise Exception(f'[ERROR]: {self.mode} is invalid mode.')
+
+
   def start(self, hours=0, minutes=0, seconds=0, append='meta', verbose=0):
     '''Start fuzzing for the given time budget.
 
@@ -154,15 +233,8 @@ class WhiteBoxFuzzer:
             # Get original coverage
             orig_cov = coverage(self.covered)
 
-            # Calculate gradients.
-            with tf.GradientTape() as t:
-              t.watch(input)
-              internals, logits = self.network.predict(input)
-              loss = self.neuron_weight * K.sum([internals[li][ni] for li, ni in neurons]) - self.class_weight * logits[orig_index]
-            dl_di = t.gradient(loss, input)
-
             # Generate the next input using gradients.
-            input += self.lr * dl_di
+            input = self._gen_mutant(input)
 
             # Get the properties of the generated input.
             internals, logits = self.network.predict(input)
