@@ -121,7 +121,7 @@ class WhiteBoxFuzzer:
 
 
 
-  def _gen_mutant_by_addition(self, input: T) -> T:
+  def _gen_mutant_by_addition(self, input: T, neurons, orig_index) -> T:
     with tf.GradientTape() as t:
       t.watch(input)
       internals, logits = self.network.predict(input)
@@ -133,19 +133,19 @@ class WhiteBoxFuzzer:
     return input
 
 
-  def _gen_mask(self, prediction: T) -> T: 
-    mask = copy.deepcopy(prediction) 
-    mx = max(prediction)
+  # def _gen_mask(self, prediction: T) -> T: 
+  #   mask = copy.deepcopy(prediction) 
+  #   mx = max(prediction)
 
-    for idx, elem in enumerate(prediction):
-        if elem == mx:
-            mask[idx] = 1 
-        else:
-            mask[idx] = 0
-    return mask
+  #   for idx, elem in enumerate(prediction):
+  #       if elem == mx:
+  #           mask[idx] = 1 
+  #       else:
+  #           mask[idx] = 0
+  #   return mask
 
 
-  def _gen_mutant_by_fgsm(self, input: T) -> T:
+  def _gen_mutant_by_fgsm(self, input: T, orig_index) -> T:
     # TODO: add input label.
     loss_object = tf.keras.losses.CategoricalCrossentropy()
     with tf.GradientTape() as tape:
@@ -153,7 +153,7 @@ class WhiteBoxFuzzer:
       prediction = self.network.predict(input)
 
       # TODO: check whether input_label is valid or not.
-      input_label = self._gen_mask(prediction)
+      input_label = orig_index 
       loss = loss_object(input_label, prediction)
 
     # Get the gradients of the loss w.r.t to the input image.
@@ -164,9 +164,9 @@ class WhiteBoxFuzzer:
     return mutant 
 
 
-  def _gen_mutant(self, input: T) -> T:
+  def _gen_mutant(self, input: T, neurons, orig_index) -> T:
     if self.mode == 'adapt':
-      return self._gen_mutant_by_addition(input)
+      return self._gen_mutant_by_addition(input, neurons, orig_index)
     elif self.mode == 'fgsm':
       return self._gen_mutant_by_fgsm(input) 
     else:
@@ -234,7 +234,7 @@ class WhiteBoxFuzzer:
             orig_cov = coverage(self.covered)
 
             # Generate the next input using gradients.
-            input = self._gen_mutant(input)
+            input = self._gen_mutant(input, neurons, orig_index)
 
             # Get the properties of the generated input.
             internals, logits = self.network.predict(input)
