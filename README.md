@@ -88,5 +88,5 @@ ADAPT offeres some tutorials at [tutorial](tutorial).
 ## Issues
 We are welcome any issues. Please, leave them in the Issues tab.
 
-## Comments
-- a
+## TODO  
+- fgsm을 통한 sign 연산이 뉴런을 구분해서 수행되어야 하는지 그렇지 않은지 확인해볼 것
