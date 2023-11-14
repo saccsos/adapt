@@ -168,7 +168,7 @@ class WhiteBoxFuzzer:
     if self.mode == 'adapt':
       return self._gen_mutant_by_addition(input, neurons, orig_index)
     elif self.mode == 'fgsm':
-      return self._gen_mutant_by_fgsm(input) 
+      return self._gen_mutant_by_fgsm(input, orig_index) 
     else:
       raise Exception(f'[ERROR]: {self.mode} is invalid mode.')
 
