@@ -9,6 +9,11 @@ import argparse
 import tensorflow as tf
 
 
+# configs.
+LENET = 'lenet'
+VGG   = 'vgg'
+
+
 def set_gpu() -> None:
     gpus = tf.config.experimental.list_physical_devices('GPU')
     if gpus:
@@ -28,7 +33,7 @@ class Executer:
         self.mode         = mode
 
 
-    def _gen_dataset(self) -> None:
+    def _gen_mnist(self) -> None:
         '''Generate dataset, the format is as follow:
         X_train, X_test, y_train, y_test
         '''
@@ -54,9 +59,15 @@ class Executer:
         res['y_train'] = y_train
         res['y_test']  = y_test
 
-        self.mnist = res
+        self.data = res
         print(f'[LOG]: minst dataset is generated.')
         return 
+
+
+    def _gen_dataset(self):
+        if self.target_model == 'lenet':
+            self._gen_mnist()
+        return
 
 
     def LeNet5(self):
@@ -100,12 +111,26 @@ class Executer:
         return
 
 
+    def _train_model(self) -> None: 
+        X_train = self.data['X_train']
+        X_test  = self.data['X_test']
+        y_train = self.data['y_train']
+        y_test  = self.data['y_test']
+
+        if self.target_model == 'lenet':
+            self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+            _ = model.fit(X_train, y_train, validation_data=(X_test, y_test), batch_size=256, epochs=10, verbose=1)
+
+        return
+
+
     def _set_experiment(self) -> None:
         # 1. get dataset
         self._gen_dataset()
         # 2. gen model.
         self._gen_model()
         # 3. train model
+        self._train_model()
         
         return 
 
