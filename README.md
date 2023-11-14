@@ -87,3 +87,6 @@ ADAPT offeres some tutorials at [tutorial](tutorial).
 
 ## Issues
 We are welcome any issues. Please, leave them in the Issues tab.
+
+## Comments
+- a
