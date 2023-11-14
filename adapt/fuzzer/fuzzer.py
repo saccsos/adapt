@@ -117,7 +117,7 @@ class WhiteBoxFuzzer:
     self.coverage = None
 
     # added as of 2023
-    self.mode = self.mode
+    self.mode = mode
 
 
 
