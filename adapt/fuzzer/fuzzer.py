@@ -145,30 +145,23 @@ class WhiteBoxFuzzer:
   #   return mask
 
 
-  def _gen_mutant_by_fgsm(self, input: T, orig_index) -> T:
-    # TODO: add input label.
-    loss_object = tf.keras.losses.CategoricalCrossentropy()
-    with tf.GradientTape() as tape:
-      tape.watch(input)
-      prediction = self.network.predict(input)
+  def _gen_mutant_by_fgsm(self, input: T, neurons, orig_index) -> T:
+    with tf.GradientTape() as t:
+      t.watch(input)
+      internals, logits = self.network.predict(input)
+      loss = self.neuron_weight * K.sum([internals[li][ni] for li, ni in neurons]) - self.class_weight * logits[orig_index]
+    dl_di = t.gradient(loss, input)
 
-      # TODO: check whether input_label is valid or not.
-      input_label = orig_index 
-      loss = loss_object(input_label, prediction)
-
-    # Get the gradients of the loss w.r.t to the input image.
-    gradient = tape.gradient(loss, input)
-    # Get the sign of the gradients to create the perturbation
-    signed_grad = tf.sign(gradient)
-    mutant = input + (self.lr * signed_grad)
-    return mutant 
+    # Generate the next input using gradients.
+    input += self.lr * tf.sign(dl_di)
+    return input
 
 
   def _gen_mutant(self, input: T, neurons, orig_index) -> T:
     if self.mode == 'adapt':
       return self._gen_mutant_by_addition(input, neurons, orig_index)
     elif self.mode == 'fgsm':
-      return self._gen_mutant_by_fgsm(input, orig_index) 
+      return self._gen_mutant_by_fgsm(input, neurons, orig_index) 
     else:
       raise Exception(f'[ERROR]: {self.mode} is invalid mode.')
 
